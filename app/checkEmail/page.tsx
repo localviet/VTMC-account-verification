@@ -14,3 +14,6 @@ export default function checkEmail() {
         </div>
     );
 }
+export const metadata = {
+  title: "Verify • VT Craft",
+};

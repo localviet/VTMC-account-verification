@@ -17,3 +17,6 @@ export default function Home() {
     </div>
   );
 }
+export const metadata = {
+  title: "VT Craft",
+};

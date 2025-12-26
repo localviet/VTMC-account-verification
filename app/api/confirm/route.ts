@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
-import { getSql } from "@/lib/db";
+import { getSql } from "@/lib/db"; // adjust path
 
-export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const token = url.searchParams.get("token");
+export async function POST(req: Request) {
+  const { token } = await req.json().catch(() => ({}));
 
-  if (!token) {
-    return NextResponse.redirect(new URL("/verify?status=missing", url));
+  if (!token || typeof token !== "string") {
+    return NextResponse.json({ error: "missing" }, { status: 400 });
   }
 
   const sql = getSql();
@@ -18,45 +17,36 @@ export async function GET(req: Request) {
     from email_verification_tokens
     where token = ${token}
     limit 1
+    for update
   `;
-
   const record = rows[0];
 
-  if (!record) {
-    return NextResponse.redirect(new URL("/verify?status=invalid", url));
-  }
+  if (!record) return NextResponse.json({ error: "invalid" }, { status: 400 });
+  if (record.used_at) return NextResponse.json({ error: "used" }, { status: 400 });
+  if (new Date(record.expires_at) < new Date()) return NextResponse.json({ error: "expired" }, { status: 400 });
 
-  if (record.used_at) {
-    return NextResponse.redirect(new URL("/verify?status=used", url));
-  }
-
-  if (new Date(record.expires_at) < new Date()) {
-    return NextResponse.redirect(new URL("/verify?status=expired", url));
-  }
-
-  // Mark email verified (idempotent)
   await sql`
     insert into verified_emails (email)
     values (${record.email})
     on conflict (email) do update set verified_at = now()
   `;
 
-  // Mark token used
   await sql`
     update email_verification_tokens
     set used_at = now()
-    where token = ${token}
+    where token = ${token} and used_at is null
   `;
 
-  const response = NextResponse.redirect(new URL("/verify?status=success", url));
+  const res = NextResponse.json({ ok: true });
+  res.headers.set("Cache-Control", "no-store");
 
-  response.cookies.set("verified_email", record.email, {
+  res.cookies.set("verified_email", record.email, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 15, // 15 minutes
+    maxAge: 60 * 15,
   });
 
-  return response;
+  return res;
 }

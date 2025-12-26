@@ -13,7 +13,6 @@ function getResend() {
 
 
 function isAllowedCollegeEmail(email: string) {
-  // change this to your college domain
   return email.toLowerCase().endsWith("@vt.edu") || email.toLowerCase().endsWith("khangho9@icloud.com"); // if ends with college name
 }
 
@@ -53,7 +52,8 @@ export async function POST(req: Request) {
 
   // 3) Build magic link
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
-  const verifyUrl = `${appUrl}/api/confirm?token=${token}`;
+  const verifyUrl = `${appUrl}/verify?token=${token}`;
+
 
   // 4) Send email with Resend
   const { data, error } = await resend.emails.send({

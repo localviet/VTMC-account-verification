@@ -11,7 +11,6 @@ export default function Verify() {
             <div>
                 <EmailVerifyForm />
             </div>
-
         </div>
     )
 }
